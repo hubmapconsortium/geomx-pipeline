@@ -1,0 +1,1 @@
+hubmap/geomx-pipeline	docker/Dockerfile	base_directory_build
