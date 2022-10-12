@@ -4,10 +4,10 @@ label: segments each image in the directory for FTUs
 
 requirements:
   DockerRequirement:
-    dockerPull: hubmap/geomx-pipeline
+    dockerPull: hubmap/geomx-pipeline-r
   DockerGpuRequirement: {}
 
-baseCommand: /opt/make_sample_by_gene.py
+baseCommand: /opt/make_sample_by_gene.R
 
 inputs:
   enable_manhole:
@@ -22,10 +22,15 @@ inputs:
     inputBinding:
       position: 1
 
-
-outputs:
   h5ad_file:
     type: File
+    doc: Path to h5ad file
+    inputBinding:
+      position: 2
+
+outputs:
+  rds_files:
+    type: File[]
     outputBinding:
-      glob: "sample_by_gene.h5ad"
-    doc: sample by gene matrix in h5ad format
+      glob: "*.rds"
+    doc: rds_files containing serialized Seurat object and serialized geoMX experiment objects
