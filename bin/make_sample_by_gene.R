@@ -1,13 +1,6 @@
 ## ----main,echo=TRUE,include=FALSE-------------------------------------------------------------------------
 library(NanoStringNCTools)
 library(GeomxTools)
-library(GeoMxWorkflows)
-library(ggplot2)
-library(DESeq2)
-library(pheatmap)
-library(knitr)
-library(dplyr)
-library(ggforce)
 library(optparse)
 
 option_list <- list(
@@ -16,7 +9,7 @@ option_list <- list(
     type = "character",
     default = NULL,
     help = "Data directory to use."
-  ),
+  )
 )
 
 opt_parser <- OptionParser(option_list = option_list)
@@ -27,8 +20,15 @@ if (is.null(opt$data_directory)) {
   stop("--data_directory argument must be supplied (input data directory).", call. = FALSE)
 }
 
-DCCFiles <- dir(data_directory, pattern=".dcc$", full.names=TRUE)
-PKCFiles <- dir(data_directory, pattern=".pkc$", full.names=TRUE)
+data_directory <- opt$data_directory
+#Why is this not giving me the whole path?
+print(data_directory)
+
+DCCFiles <- dir(data_directory, pattern="//.dcc$", full.names=TRUE)
+PKCFiles <- dir(data_directory, pattern="//.pkc$", full.names=TRUE)
+
+print(DCCFiles)
+print(PKCFiles)
 
 data <-readNanoStringGeoMxSet(dccFiles = DCCFiles,
                                       pkcFiles = PKCFiles,)

@@ -9,23 +9,14 @@ requirements:
 baseCommand: [Rscript, /opt/make_sample_by_gene.R]
 
 inputs:
-  enable_manhole:
-    label: "Whether to enable remote debugging via 'manhole'"
-    type: boolean?
-    inputBinding:
-      position: 0
 
   data_directory:
     type: Directory
     doc: Path to processed dataset directory
     inputBinding:
       position: 1
-
-  h5ad_file:
-    type: File
-    doc: Path to h5ad file
-    inputBinding:
-      position: 2
+      prefix: --data_directory
+      valueFrom: $(self.basename)
 
 outputs:
   rds_files:
