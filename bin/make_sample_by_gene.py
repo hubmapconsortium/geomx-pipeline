@@ -7,10 +7,13 @@ import os
 import anndata
 import json
 import pandas as pd
+import numpy as np
 
 GENE_MAPPING_DIRECTORIES = [
     Path(__file__).parent.parent / 'data',
     Path('/opt/data'),
+    Path('/opt/'),
+
 ]
 
 def find_files(directory: Path, pattern: str) -> Iterable[Path]:
@@ -45,12 +48,12 @@ def map_gene_ids(adata):
     gene_mapping = read_gene_mapping()
     keep_vars = [gene in gene_mapping for gene in adata.var.index]
     adata = adata[:, keep_vars]
-    temp_df = pd.DataFrame(adata.X.todense(), index=adata.obs.index, columns=adata.var.index)
+    temp_df = pd.DataFrame(adata.X, index=adata.obs.index, columns=adata.var.index)
     aggregated = temp_df.groupby(level=0, axis=1).sum()
     adata = anndata.AnnData(aggregated, obs=adata.obs)
     adata.var.index = [gene_mapping[var] for var in adata.var.index]
     reverse_dict = read_gene_mapping(reverse=True)
-    adata.var["gene_symbol"] = pd.Series([reverse_dict[ensembl_id] for ensembl_id in adata.var.index])
+    adata.var["gene_symbol"] = pd.Series([reverse_dict[ensembl_id] for ensembl_id in adata.var.index], index=adata.var.index)
     adata.obsm = obsm
     adata.var_names_make_unique()
     return adata
@@ -58,37 +61,81 @@ def map_gene_ids(adata):
 def get_probe_to_gene_symbol_mapping(pkc_file):
     with open(pkc_file) as f:
         target_dict = json.load(f)
-    probe_to_gene_symbol_mapping = {entry["RTS_ID"]: entry["SystematicName"] for entry in target_dict["targets"]}
+    probe_to_gene_symbol_mapping = {entry['Probes'][0]["RTS_ID"]: entry['DisplayName'] for entry in target_dict["Targets"]}
+    for entry in target_dict["Targets"]:
+        if len(entry["Probes"]) != 1:
+            for item in entry["Probes"]:
+                probe_to_gene_symbol_mapping[item["RTS_ID"]] = item["DisplayName"]
+
     return probe_to_gene_symbol_mapping
 
-def get_code_summary(dcc_file):
+def parse_dcc(dcc_file, section_tag):
+    """Takes a file path and a tag, returns a list of strings, one for each line in the section marked with that tag"""
     with open(dcc_file) as f:
         text = f.read()
-    text_split = text.split('<Code_Summary')
+    text_split = text.split(f'{section_tag}>')
+
     assert len(text_split) == 3
-    code_summary = text_split[1]
-    code_summary = code_summary.strip('>')
-    code_summary_lines = code_summary.split('\n')
-    return {code_summary_line.split(',')[0]:int(code_summary_line.split(',')[1].strip()) for code_summary_line in code_summary_lines}
+    section = text_split[1]
+    section = section.strip('</')
+    section_lines = section.split('\n')
+    return section_lines
+
+def lines_to_dict(section_lines):
+    line_splits = [line.split(',') for line in section_lines if len(line.split(',')) == 2]
+    line_dict = {line_split[0]:line_split[1] for line_split in line_splits}
+    for attribute in line_dict:
+        if line_dict[attribute].isnumeric():
+            line_dict[attribute] = int(line_dict[attribute])
+        elif attribute in ["UMI merge factor", "umiQ30", "rtsQ30"]:
+            line_dict[attribute] = float(line_dict[attribute])
+
+    return line_dict
+
+def get_annotations(dcc_file):
+    annotations = {}
+    scan_attributes_lines = parse_dcc(dcc_file, "Scan_Attributes")
+    scan_attribute_dict = lines_to_dict(scan_attributes_lines)
+    ngs_processing_lines = parse_dcc(dcc_file, "NGS_Processing_Attributes")
+    ngs_processing_dict = lines_to_dict(ngs_processing_lines)
+    annotations.update(scan_attribute_dict)
+    annotations.update(ngs_processing_dict)
+    return annotations
+
 
 def get_aoi_id(dcc_file):
     return dcc_file.stem
 
 def main(data_directory: Path):
-    pkc_file = find_files(data_directory, "*.pkc")
+    pkc_files = list(find_files(data_directory, "*.pkc"))
+    assert len(pkc_files) == 1
+    pkc_file = pkc_files[0]
     probe_to_gene_mapping = get_probe_to_gene_symbol_mapping(pkc_file)
-    dcc_files = find_files(data_directory, "*.dcc")
-    code_summaries = {get_aoi_id(dcc_file): get_code_summary(dcc_file) for dcc_file in dcc_files}
-    obs = list(code_summaries.keys())
+    dcc_files = list(find_files(data_directory, "*.dcc"))
+    code_summaries = {get_aoi_id(dcc_file): lines_to_dict(parse_dcc(dcc_file, "Code_Summary")) for dcc_file in dcc_files}
+    annotations = [get_annotations(dcc_file) for dcc_file in dcc_files]
+    obs = pd.DataFrame(annotations)
+    obs = obs.set_index("ID", drop=True, inplace=False)
     vars = list(probe_to_gene_mapping.values())
-    adata = anndata.AnnData(obs=obs, vars=vars)
+    vars = pd.DataFrame(index=vars)
+    adata = anndata.AnnData(obs=obs, var=vars, X=np.zeros((len(obs.index), len(vars.index))))
     for aoi_id in code_summaries:
         for probe_id in code_summaries[aoi_id]:
-            gene_symbol = probe_to_gene_mapping[probe_id]
-            adata[aoi_id, gene_symbol] = code_summaries[aoi_id][probe_id]
+            if aoi_id not in adata.obs.index:
+                print(f"{aoi_id} not in obs_index")
+            if probe_id not in probe_to_gene_mapping:
+                print(f"{probe_id} not found in probe set")
+            else:
+                gene_symbol = probe_to_gene_mapping[probe_id]
+                if gene_symbol not in adata.var.index:
+                    print(f"{gene_symbol} not in var_index")
+                adata[aoi_id, gene_symbol].X = code_summaries[aoi_id][probe_id]
+    bool_mask = ["NegProbe" not in var for var in adata.var.index]
+    adata = adata[:, bool_mask]
 
+    #Drop negative probes
     adata = map_gene_ids(adata)
-    adata.write_h5ad('cell_by_gene.h5ad')
+    adata.write_h5ad('sample_by_gene.h5ad')
 
 if __name__ == '__main__':
     p = ArgumentParser()
@@ -101,4 +148,4 @@ if __name__ == '__main__':
 
         manhole.install(activate_on="USR1")
 
-    main(args.data_directorye)
+    main(args.data_directory)
