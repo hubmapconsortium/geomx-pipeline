@@ -27,3 +27,5 @@ BiocManager::install("GeomxTools")
 
 install.packages("remotes")
 remotes::install_github("Nanostring-Biostats/GeomxTools")
+
+install.packages('Seurat')

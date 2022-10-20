@@ -2,6 +2,7 @@
 library(NanoStringNCTools)
 library(GeomxTools)
 library(optparse)
+library(Seurat)
 
 option_list <- list(
   make_option(
@@ -20,20 +21,23 @@ if (is.null(opt$data_directory)) {
   stop("--data_directory argument must be supplied (input data directory).", call. = FALSE)
 }
 
-data_directory <- opt$data_directory
-#Why is this not giving me the whole path?
-print(data_directory)
+data_directory = "/var/lib/cwl/"
 
-DCCFiles <- dir(data_directory, pattern="//.dcc$", full.names=TRUE)
-PKCFiles <- dir(data_directory, pattern="//.pkc$", full.names=TRUE)
-
-print(DCCFiles)
-print(PKCFiles)
+DCCFiles <- dir(data_directory, pattern=".dcc$", full.names=TRUE, recursive=TRUE)
+PKCFiles <- dir(data_directory, pattern=".pkc$", full.names=TRUE, recursive=TRUE)
+annotations_file = dir(data_directory, pattern=".xlsx$", full.names=TRUE, recursive=TRUE)
 
 data <-readNanoStringGeoMxSet(dccFiles = DCCFiles,
-                                      pkcFiles = PKCFiles,)
+                                      pkcFiles = PKCFiles, phenoDataFile=annotations_file,
+                                      phenoDataSheet = "Annotations")
 
 target_data <- aggregateCounts(data)
 
-filename = sprintf("%s.rds", data_directory)
-save_rds(target_data, )
+saveRDS(target_data, file="sample_by_gene.rds")
+
+#@TODO:Find out what normalization if any is appropriate
+#seurat_target_data <- as.Seurat(
+#  target_data,
+#)
+
+#saveRDS(seurat_target_data, file="seurat_sample_by_gene.rds")
