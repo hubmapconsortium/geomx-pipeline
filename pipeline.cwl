@@ -44,8 +44,6 @@ steps:
     in:
       - id: data_directory
         source: data_directory
-      - id: h5ad_file
-        source: h5ad_file
       - id: enable_manhole
         source: enable_manhole
 
