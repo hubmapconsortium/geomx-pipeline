@@ -131,7 +131,11 @@ def main(data_directory: Path):
                     print(f"{gene_symbol} not in var_index")
                 adata[aoi_id, gene_symbol].X = code_summaries[aoi_id][probe_id]
     bool_mask = ["NegProbe" not in var for var in adata.var.index]
+    neg_probes = [not val for val in bool_mask]
+    neg_probe_counts_df = adata[:,neg_probes].to_df()
     adata = adata[:, bool_mask]
+    for column in neg_probe_counts_df.columns:
+        adata.obsm[column] = neg_probe_counts_df[column].to_numpy()
 
     #Drop negative probes
     adata = map_gene_ids(adata)
