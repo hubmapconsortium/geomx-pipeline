@@ -21,10 +21,6 @@ outputs:
     outputSource: make-sample-by-gene/h5ad_file
     type: File
 
-  rds_files:
-    outputSource: make-sample-by-gene-r/rds_files
-    type: File[]
-
 steps:
 
   - id: make-sample-by-gene
@@ -38,17 +34,4 @@ steps:
       - h5ad_file
 
     run: steps/make-sample-by-gene.cwl
-    label: "Converts several dcc files into an annotated sample by gene matrix"
-
-  - id: make-sample-by-gene-r
-    in:
-      - id: data_directory
-        source: data_directory
-      - id: enable_manhole
-        source: enable_manhole
-
-    out:
-      - rds_files
-
-    run: steps/make-sample-by-gene-r.cwl
     label: "Converts several dcc files into an annotated sample by gene matrix"
