@@ -4,7 +4,7 @@ label: segments each image in the directory for FTUs
 
 requirements:
   DockerRequirement:
-    dockerPull: hubmap/geomx-pipeline:0.2
+    dockerPull: hubmap/geomx-pipeline
 
 baseCommand: /opt/make_sample_by_gene.py
 
