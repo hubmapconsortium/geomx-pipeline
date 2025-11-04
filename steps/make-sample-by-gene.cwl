@@ -23,8 +23,8 @@ inputs:
 
 
 outputs:
-  h5ad_file:
+  h5mu_file:
     type: File
     outputBinding:
-      glob: "sample_by_gene.h5ad"
-    doc: sample by gene matrix in h5ad format
+      glob: "sample_by_gene.h5mu"
+    doc: sample by gene matrix in h5mu format

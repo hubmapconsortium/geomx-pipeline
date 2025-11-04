@@ -17,8 +17,8 @@ inputs:
 
 outputs:
 
-  h5ad_file:
-    outputSource: make-sample-by-gene/h5ad_file
+  h5mu_file:
+    outputSource: make-sample-by-gene/h5mu_file
     type: File
 
 steps:

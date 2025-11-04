@@ -5,6 +5,7 @@ from typing import Iterable, Dict
 from argparse import ArgumentParser
 import os
 import anndata
+import muon
 import json
 import pandas as pd
 import numpy as np
@@ -58,16 +59,22 @@ def map_gene_ids(adata):
     adata.var_names_make_unique()
     return adata
 
-def get_probe_to_gene_symbol_mapping(pkc_file):
-    with open(pkc_file) as f:
-        target_dict = json.load(f)
-    probe_to_gene_symbol_mapping = {entry['Probes'][0]["RTS_ID"]: entry['DisplayName'] for entry in target_dict["Targets"]}
-    for entry in target_dict["Targets"]:
-        if len(entry["Probes"]) != 1:
-            for item in entry["Probes"]:
-                probe_to_gene_symbol_mapping[item["RTS_ID"]] = item["DisplayName"]
+def get_probe_mappings(pkc_files):
+    probe_to_gene_symbol_mapping = {}
+    probe_to_protein_mapping = {}
+    for pkc_file in pkc_files:
+        with open(pkc_file) as f:
+            target_dict = json.load(f)
 
-    return probe_to_gene_symbol_mapping
+        probe_mapping = probe_to_gene_symbol_mapping if target_dict['AnalyteType'] == 'RNA' else probe_to_protein_mapping
+        pkc_mapping = {entry['Probes'][0]["RTS_ID"]: entry['DisplayName'] for entry in target_dict["Targets"]}
+        for entry in target_dict["Targets"]:
+            if len(entry["Probes"]) != 1:
+                for item in entry["Probes"]:
+                    pkc_mapping[item["RTS_ID"]] = item["DisplayName"]
+        probe_mapping.update(pkc_mapping)
+
+    return probe_to_gene_symbol_mapping, probe_to_protein_mapping
 
 def parse_dcc(dcc_file, section_tag):
     """Takes a file path and a tag, returns a list of strings, one for each line in the section marked with that tag"""
@@ -106,40 +113,59 @@ def get_annotations(dcc_file):
 def get_aoi_id(dcc_file):
     return dcc_file.stem
 
-def main(data_directory: Path):
-    pkc_files = list(find_files(data_directory, "*.pkc"))
-    assert len(pkc_files) == 1
-    pkc_file = pkc_files[0]
-    probe_to_gene_mapping = get_probe_to_gene_symbol_mapping(pkc_file)
-    dcc_files = list(find_files(data_directory, "*.dcc"))
-    code_summaries = {get_aoi_id(dcc_file): lines_to_dict(parse_dcc(dcc_file, "Code_Summary")) for dcc_file in dcc_files}
-    annotations = [get_annotations(dcc_file) for dcc_file in dcc_files]
-    obs = pd.DataFrame(annotations)
-    obs = obs.set_index("ID", drop=True, inplace=False)
-    vars = list(probe_to_gene_mapping.values())
-    vars = pd.DataFrame(index=vars)
-    adata = anndata.AnnData(obs=obs, var=vars, X=np.zeros((len(obs.index), len(vars.index))))
-    for aoi_id in code_summaries:
-        for probe_id in code_summaries[aoi_id]:
-            if aoi_id not in adata.obs.index:
-                print(f"{aoi_id} not in obs_index")
-            if probe_id not in probe_to_gene_mapping:
-                print(f"{probe_id} not found in probe set")
-            else:
-                gene_symbol = probe_to_gene_mapping[probe_id]
-                if gene_symbol not in adata.var.index:
-                    print(f"{gene_symbol} not in var_index")
-                adata[aoi_id, gene_symbol].X = code_summaries[aoi_id][probe_id]
+def drop_negative_probes(adata):
     bool_mask = ["NegProbe" not in var for var in adata.var.index]
     neg_probes = [not val for val in bool_mask]
     neg_probe_counts_df = adata[:,neg_probes].to_df()
     adata = adata[:, bool_mask]
     for column in neg_probe_counts_df.columns:
         adata.obsm[column] = neg_probe_counts_df[column].to_numpy()
+    return adata
 
+def main(data_directory: Path):
+    pkc_files = list(find_files(data_directory, "*.pkc"))
+    probe_to_gene_mapping, probe_to_protein_mapping = get_probe_mappings(pkc_files)
+    dcc_files = list(find_files(data_directory, "*.dcc"))
+    code_summaries = {get_aoi_id(dcc_file): lines_to_dict(parse_dcc(dcc_file, "Code_Summary")) for dcc_file in dcc_files}
+    annotations = [get_annotations(dcc_file) for dcc_file in dcc_files]
+    obs = pd.DataFrame(annotations)
+    obs = obs.set_index("ID", drop=True, inplace=False)
+
+    rna_vars = list(probe_to_gene_mapping.values())
+    rna_vars = pd.DataFrame(index=rna_vars)
+    rna_adata = anndata.AnnData(obs=obs, var=rna_vars, X=np.zeros((len(obs.index), len(rna_vars.index))))
+
+    protein_vars = list(probe_to_protein_mapping.values())
+    protein_vars = pd.DataFrame(index=protein_vars)
+    protein_adata = anndata.AnnData(obs=obs, var=protein_vars, X=np.zeros((len(obs.index), len(protein_vars.index))))
+
+    for aoi_id in code_summaries:
+        for probe_id in code_summaries[aoi_id]:
+            if aoi_id in rna_adata.obs.index:
+                if probe_id in probe_to_gene_mapping:
+                    gene_symbol = probe_to_gene_mapping[probe_id]
+                    rna_adata[aoi_id, gene_symbol].X = code_summaries[aoi_id][probe_id]
+                elif probe_id in probe_to_protein_mapping:
+                    protein_id = probe_to_protein_mapping[probe_id]
+                    protein_adata[aoi_id, protein_id].X = code_summaries[aoi_id][probe_id]
+                else:
+                    print(f"{probe_id} not found in probe set")
+            else:
+                print(f"{aoi_id} not in obs_index")
+
+    rna_adata = drop_negative_probes(rna_adata)
+    protein_adata = drop_negative_probes(protein_adata)
     #Drop negative probes
-    adata = map_gene_ids(adata)
-    adata.write_h5ad('sample_by_gene.h5ad')
+
+    adata_dict = {}
+
+    rna_adata = map_gene_ids(rna_adata)
+    if len(rna_adata.var.index) != 0:
+        adata_dict['rna'] = rna_adata
+    if len(protein_adata.var.index) != 0:
+        adata_dict['protein'] = protein_adata
+    mudata = muon.MuData(adata_dict)
+    mudata.write_h5mu('sample_by_gene.h5mu')
 
 if __name__ == '__main__':
     p = ArgumentParser()
