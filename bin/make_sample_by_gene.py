@@ -67,7 +67,8 @@ def get_probe_mappings(pkc_files):
             target_dict = json.load(f)
 
         probe_mapping = probe_to_gene_symbol_mapping if target_dict['AnalyteType'] == 'RNA' else probe_to_protein_mapping
-        pkc_mapping = {entry['Probes'][0]["RTS_ID"]: entry['DisplayName'] for entry in target_dict["Targets"]}
+        pkc_mapping = {entry['Probes'][0]["RTS_ID"]: entry['DisplayName'] if target_dict['AnalyteType'] == 'RNA' \
+            else entry['Probes']['RTS_ID'] for entry in target_dict["Targets"]}
         for entry in target_dict["Targets"]:
             if len(entry["Probes"]) != 1:
                 for item in entry["Probes"]:

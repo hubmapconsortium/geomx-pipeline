@@ -31,7 +31,7 @@ steps:
         source: enable_manhole
 
     out:
-      - h5ad_file
+      - h5mu_file
 
     run: steps/make-sample-by-gene.cwl
     label: "Converts several dcc files into an annotated sample by gene matrix"
