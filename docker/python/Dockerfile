@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 ## System packages
@@ -10,19 +10,21 @@ RUN apt-get update \
     python3 \
     python3-dev \
     python3-pip \
+    python3-venv \
  && rm -rf /var/cache/apt/*
 
 ## Python packages
 COPY docker/python/requirements.txt /opt/requirements.txt
-RUN pip3 install --upgrade pip
-
-RUN pip3 install -r /opt/requirements.txt \
- && rm -rf /root/.cache/pip
+RUN python3 -m venv /opt/venv \
+ && . /opt/venv/bin/activate \
+ && pip install -r /opt/requirements.txt \
+ && rm -rf /root/.cache/pip /opt/requirements.txt
 
 RUN mkdir /root/.ssh
 
 COPY bin /opt
 COPY data /opt
 
-
 WORKDIR /opt
+
+env PATH /opt/venv/bin:${PATH}
