@@ -16,6 +16,9 @@ outputs:
   h5ad_file:
     outputSource: make-sample-by-gene/h5ad_file
     type: File
+  ome_tiff:
+    outputSource: adjust-ometiff-channels/ome_tiff
+    type: File
 
 steps:
   make-sample-by-gene:
@@ -26,6 +29,13 @@ steps:
         source: enable_manhole
     out:
       - h5ad_file
-
     run: steps/make-sample-by-gene.cwl
     label: "Converts several dcc files into an annotated sample by gene matrix"
+  adjust-ometiff-channels:
+    in:
+      data_directory:
+        source: data_directory
+    out:
+      - ome_tiff
+    run: steps/adjust-ometiff-channels.cwl
+    label: "Write new OME-TIFF with adjusted channel names"

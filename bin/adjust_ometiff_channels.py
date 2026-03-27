@@ -20,13 +20,13 @@ def find_ome_tiff(data_dir: Path) -> Path:
 def main(data_dir: Path):
     ome_tiff = find_ome_tiff(data_dir)
     print("Found OME-TIFF:", ome_tiff)
-    output_ometiff_path = Path() / ome_tiff.relative_to(data_dir)
-    output_ometiff_path.parent.mkdir(exist_ok=True, parents=True)
+    output_ometiff_path = Path(ome_tiff.name)
     maybe_markers_csv = data_dir / "raw/markers.csv"
     if maybe_markers_csv.is_file():
         print("Found markers CSV:", maybe_markers_csv)
         markers = pd.read_csv(maybe_markers_csv)
         image = bioio.BioImage(ome_tiff)
+        print("Old channel names:", image.channel_names)
         # handle CSVs with junk rows at bottom
         new_markers = list(markers["marker"][: len(image.channel_names)])
         print("Instantiating new image with channel names:", new_markers)

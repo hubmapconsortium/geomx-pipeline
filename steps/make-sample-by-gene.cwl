@@ -1,6 +1,6 @@
 cwlVersion: v1.1
 class: CommandLineTool
-label: segments each image in the directory for FTUs
+label: Converts vendor output to H5AD
 
 requirements:
   DockerRequirement:

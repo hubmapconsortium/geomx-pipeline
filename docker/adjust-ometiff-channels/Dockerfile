@@ -16,7 +16,6 @@ RUN python3 -m venv /opt/venv \
  && pip install -r /opt/requirements.txt \
  && rm -rf /root/.cache/pip /opt/requirements.txt
 
-COPY bin/common /opt
-COPY bin/convert_to_ometiff /opt
+COPY bin/adjust_ometiff_channels.py /opt
 
 env PATH /opt/venv/bin:${PATH}
