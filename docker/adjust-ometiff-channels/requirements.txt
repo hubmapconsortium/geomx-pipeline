@@ -1,6 +1,4 @@
-bioio
-bioio-ome-tiff
-bioio-tifffile
+lxml
 manhole
 numpy
 tifffile
