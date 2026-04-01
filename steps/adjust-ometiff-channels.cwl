@@ -16,8 +16,8 @@ inputs:
       position: 1
 
 outputs:
-  ome_tiff:
-    type: File
+  ome_tiff_directory:
+    type: Directory
     outputBinding:
-      glob: "*.ome.tiff"
+      glob: "lab_processed"
     doc: OME-TIFF with updated channel names

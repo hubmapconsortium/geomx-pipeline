@@ -22,7 +22,8 @@ def find_ome_tiff(data_dir: Path) -> Path:
 def main(data_dir: Path):
     ome_tiff = find_ome_tiff(data_dir)
     print("Found OME-TIFF:", ome_tiff)
-    output_ometiff_path = Path(ome_tiff.name)
+    output_ometiff_path = Path(ome_tiff.relative_to(data_dir))
+    output_ometiff_path.parent.mkdir(exist_ok=True, parents=True)
     maybe_markers_csv = data_dir / "raw/markers.csv"
     print("Copying", ome_tiff, "to", output_ometiff_path)
     copy(ome_tiff, output_ometiff_path)

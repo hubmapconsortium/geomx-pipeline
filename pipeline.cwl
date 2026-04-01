@@ -16,9 +16,9 @@ outputs:
   h5ad_file:
     outputSource: make-sample-by-gene/h5ad_file
     type: File
-  ome_tiff:
-    outputSource: adjust-ometiff-channels/ome_tiff
-    type: File
+  ome_tiff_directory:
+    outputSource: adjust-ometiff-channels/ome_tiff_directory
+    type: Directory
 
 steps:
   make-sample-by-gene:
@@ -36,6 +36,6 @@ steps:
       data_directory:
         source: data_directory
     out:
-      - ome_tiff
+      - ome_tiff_directory
     run: steps/adjust-ometiff-channels.cwl
     label: "Write new OME-TIFF with adjusted channel names"
