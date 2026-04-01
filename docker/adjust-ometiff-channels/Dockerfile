@@ -1,6 +1,6 @@
 FROM ubuntu:24.04
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
  && apt-get -y install \
@@ -18,4 +18,4 @@ RUN python3 -m venv /opt/venv \
 
 COPY bin/adjust_ometiff_channels.py /opt
 
-env PATH /opt/venv/bin:${PATH}
+ENV PATH=/opt/venv/bin:${PATH}
