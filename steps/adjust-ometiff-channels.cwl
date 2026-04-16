@@ -4,7 +4,7 @@ label: Replaces channels in OME-TIFF metadata
 
 requirements:
   DockerRequirement:
-    dockerPull: hubmap/geomx-adjust-ometiff-channels
+    dockerPull: hubmap/geomx-adjust-ometiff-channels:0.3
 
 baseCommand: /opt/adjust_ometiff_channels.py
 

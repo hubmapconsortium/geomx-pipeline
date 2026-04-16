@@ -4,7 +4,7 @@ label: Converts vendor output to H5AD
 
 requirements:
   DockerRequirement:
-    dockerPull: hubmap/geomx-pipeline
+    dockerPull: hubmap/geomx-pipeline:0.3
 
 baseCommand: /opt/make_sample_by_gene.py
 
