@@ -1,1 +1,2 @@
 hubmap/geomx-pipeline	docker/python/Dockerfile	base_directory_build
+hubmap/geomx-adjust-ometiff-channels	docker/adjust-ometiff-channels/Dockerfile	base_directory_build
